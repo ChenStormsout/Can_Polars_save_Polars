@@ -1,6 +1,7 @@
 import openml
 from pathlib import Path
 from typing import Union
+import pandas as pd
 
 
 def find_path(dir_name: str = "data") -> Path:
@@ -32,7 +33,7 @@ def _get_dataset(id: int, cache_dir: Union[str, Path]) -> openml.OpenMLDataset:
     return openml.datasets.get_dataset(id, download_data=True)
 
 
-def get_diabetes(data_dir: str = "data"):
+def get_diabetes(data_dir: str = "data") -> pd.DataFrame:
     """Get Diabetes dataset."""
     dir = find_path(data_dir)
     dataset = _get_dataset(42608, dir)
@@ -42,7 +43,7 @@ def get_diabetes(data_dir: str = "data"):
     return df
 
 
-def get_spam(data_dir: str = "data"):
+def get_spam(data_dir: str = "data") -> pd.DataFrame:
     """Get spam dataset."""
     dir = find_path(data_dir)
     dataset = _get_dataset(44, dir)
