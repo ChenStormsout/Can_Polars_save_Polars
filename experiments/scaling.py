@@ -62,15 +62,15 @@ def run_tests(
         for tj, test in enumerate(tests):
             match test:
                 case "groupby":
-                    cpu_time, _ = measure_time(
+                    _, cpu_time = measure_time(
                         lambda: library.groupby(sdf, groupby_column)
                     )
                 case "sort":
-                    cpu_time, _ = measure_time(
+                    _, cpu_time = measure_time(
                         lambda: library.sort_column(sdf, sort_column)
                     )
                 case "drop_duplicates":
-                    cpu_time, _ = measure_time(lambda: library.drop_duplicates(sdf))
+                    _, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
             res[ti, tj] = cpu_time
     res_df = pd.DataFrame(res)
     res_df.columns = [library.method_name + "_" + t for t in tests]
