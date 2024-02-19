@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Union, Any
 from pathlib import Path
 import pandas as pd
+import polars as pl
 
 
 class DSLibrary(ABC):
@@ -57,7 +58,9 @@ class PDLibrary(DSLibrary):
     def drop_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
         return df.drop_duplicates()
 
-    def groupby(self, df: pd.DataFrame, column_name: str) -> pd.DataFrame:
+    def groupby(
+        self, df: pd.DataFrame, column_name: str
+    ) -> pd.api.typing.DataFrameGroupBy:
         return df.groupby(by=column_name)
 
     def sort_column(self, df: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -67,3 +70,30 @@ class PDLibrary(DSLibrary):
         self, df_a: pd.DataFrame, df_b: pd.DataFrame, merge_column: str
     ) -> pd.DataFrame:
         return df_a.merge(df_b, on=merge_column)
+
+
+class PolarsLibrary(DSLibrary):
+    """Polars library test object."""
+
+    def __init__(self) -> None:
+        super().__init__("polars")
+
+    def load_csv(self, filename: str | Path, **kwargs) -> Any:
+        return pl.read_csv(filename, **kwargs)
+
+    def convert_from_pandas(self, df: pd.DataFrame) -> pd.DataFrame:
+        return pl.from_pandas(df)
+
+    def drop_duplicates(self, df: pl.DataFrame) -> pl.DataFrame:
+        return df.unique()
+
+    def groupby(self, df: pl.DataFrame, column_name: str) -> Any:
+        return df.group_by(by=column_name)
+
+    def sort_column(self, df: pl.DataFrame, column_name: str) -> pl.DataFrame:
+        return df.sort(by=column_name)
+
+    def merge(
+        self, df_a: pl.DataFrame, df_b: pl.DataFrame, merge_column: str
+    ) -> pl.DataFrame:
+        return df_a.join(df_b, on=merge_column)

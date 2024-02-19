@@ -1,4 +1,4 @@
-from libraries import PDLibrary, DSLibrary
+from libraries import PDLibrary, DSLibrary, PolarsLibrary
 from data import get_diabetes
 import gc
 import time
@@ -79,11 +79,19 @@ def run_tests(
 
 if __name__ == "__main__":
     df = get_diabetes()
-    rdf = run_tests(
+    res_pd = run_tests(
         dataset=df,
         tests=["drop_duplicates", "groupby", "sort"],
         library=PDLibrary(),
         groupby_column="Pregnancies",
         sort_column="Glucose",
     )
-    print(rdf)
+    print(res_pd)
+    res_pl = run_tests(
+        dataset=df,
+        tests=["drop_duplicates", "groupby", "sort"],
+        library=PolarsLibrary(),
+        groupby_column="Pregnancies",
+        sort_column="Glucose",
+    )
+    print(res_pl)
