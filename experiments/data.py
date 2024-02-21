@@ -27,7 +27,7 @@ def _get_dataset(id: int, cache_dir: Union[str, Path]) -> openml.OpenMLDataset:
     -------
     OpenML dataset object.
     """
-    with open(Path(__file__).parent / "apikey.txt", "r") as apifile:
+    with open(Path(__file__).parent / "openml_apikey.txt", "r") as apifile:
         apikey = apifile.read()
     openml.config.apikey = apikey
     # OpenML can handle the caching of datasets
