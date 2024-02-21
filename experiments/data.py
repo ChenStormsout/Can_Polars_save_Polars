@@ -32,7 +32,12 @@ def _get_dataset(id: int, cache_dir: Union[str, Path]) -> openml.OpenMLDataset:
     openml.config.apikey = apikey
     # OpenML can handle the caching of datasets
     openml.config.cache_directory = cache_dir
-    return openml.datasets.get_dataset(id, download_data=True)
+    return openml.datasets.get_dataset(
+        id,
+        download_data=True,
+        download_qualities=False,
+        download_features_meta_data=False,
+    )
 
 
 def get_diabetes(data_dir: str = "data") -> pd.DataFrame:
