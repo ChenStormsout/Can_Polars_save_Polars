@@ -2,7 +2,10 @@ from libraries import PDLibrary, DSLibrary, PolarsLibrary
 from data import get_diabetes
 import gc
 import time
+import os
 import pandas as pd
+from pypapi import papi_high
+from pypapi import events as papi_events
 import numpy as np
 
 rng = np.random.default_rng(42)
@@ -12,9 +15,26 @@ def measure_time(function):
     """Measure CPU and wall times of a given function."""
     gc.collect()
     t1 = time.perf_counter(), time.process_time()
+
+    # TODO: This stuff was for the PR version of the library but it doesn't seem to work. 
+    # os.environ["PAPI_EVENTS"] = "PAPI_TOT_CYC"
+    # os.environ["PAPI_OUTPUT_DIRECTORY"] = "./"
+    # papi_high.hl_region_begin("computation")
+    # TODO: For some reason perf counters are not available even though `papi_avail` shows that some, including `PAPI_TOT_CYC`, are.
+    # print(papi_high.num_counters())
+    # papi_high.start_counters([
+    #     papi_events.PAPI_TOT_CYC
+    # ])
     function()
+    # TODO: For PR PAPI
+    # papi_high.hl_read("computation")
+    # papi_high.hl_region_end("computation")
+    # TODO: For released PAPI
+    # [cycles] = papi_high.stop_counters()
     t2 = time.perf_counter(), time.process_time()
-    return t2[0] - t1[0], t2[1] - t1[1]
+    counter_diff = t2[0] - t1[0]
+    cpu_time = t2[1] - t1[1]
+    return 0, counter_diff, cpu_time
 
 
 def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
@@ -54,7 +74,7 @@ def run_tests(
     sample_size : int, optional.
         Bootstrap sample size. Defaults to 100 000.
     """
-    res = np.zeros((n_repeats, len(tests)))
+    res = np.zeros((n_repeats, 3 * len(tests)))
     for ti in range(n_repeats):
         print(f"Start test {ti+1}/{n_repeats}")
         sdf = bootstrap_data(dataset, sample_size=sample_size)
@@ -62,18 +82,20 @@ def run_tests(
         for tj, test in enumerate(tests):
             match test:
                 case "groupby":
-                    _, cpu_time = measure_time(
+                    cycle, counter, cpu_time = measure_time(
                         lambda: library.groupby(sdf, groupby_column)
                     )
                 case "sort":
-                    _, cpu_time = measure_time(
+                    cycle, counter, cpu_time = measure_time(
                         lambda: library.sort_column(sdf, sort_column)
                     )
                 case "drop_duplicates":
-                    _, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
-            res[ti, tj] = cpu_time
+                    cycle, counter, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
+            res[ti, 3 * tj + 0] = cycle
+            res[ti, 3 * tj + 1] = counter
+            res[ti, 3 * tj + 2] = cpu_time
     res_df = pd.DataFrame(res)
-    res_df.columns = [library.method_name + "_" + t for t in tests]
+    res_df.columns = [prefix + "_" + library.method_name + "_" + postfix for postfix in tests for prefix in ["cycles", "counter", "cpu"]]
     return res_df
 
 
