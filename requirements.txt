@@ -2,6 +2,8 @@ numpy>1.21.5
 openml==0.14.2
 pandas==2.2.0
 polars==0.20.9
+codecarbon==2.3.4
+# energyusage==0.0.14
 # python-papi==5.5.1.6
 # TODO: Tried https://github.com/flozz/pypapi/pull/37 but it doesn't seem to work either
 # python-papi @ git+https://github.com/SerodioJ/pypapi@v6.0.0.1

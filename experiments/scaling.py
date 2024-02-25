@@ -4,9 +4,12 @@ import gc
 import time
 import os
 import pandas as pd
-from pypapi import papi_high
-from pypapi import events as papi_events
+# from pypapi import papi_high
+# from pypapi import events as papi_events
 import numpy as np
+# import energyusage
+from codecarbon import OfflineEmissionsTracker
+
 
 rng = np.random.default_rng(42)
 
@@ -14,17 +17,28 @@ rng = np.random.default_rng(42)
 def measure_time(function):
     """Measure CPU and wall times of a given function."""
     gc.collect()
+    tracker = OfflineEmissionsTracker(
+        tracking_mode = "process",
+        measure_power_secs = 0.1,
+        save_to_file = False,
+        save_to_api = False,
+        save_to_logger = False,
+        country_iso_code = "FIN",
+        log_level = "critical",
+    )
+    tracker.start()
     t1 = time.perf_counter(), time.process_time()
 
     # TODO: This stuff was for the PR version of the library but it doesn't seem to work. 
     # os.environ["PAPI_EVENTS"] = "PAPI_TOT_CYC"
-    # os.environ["PAPI_OUTPUT_DIRECTORY"] = "./"
+    # os.environ["PAPI_OUTPUT_DIRECTORY"] = "."
     # papi_high.hl_region_begin("computation")
     # TODO: For some reason perf counters are not available even though `papi_avail` shows that some, including `PAPI_TOT_CYC`, are.
     # print(papi_high.num_counters())
     # papi_high.start_counters([
     #     papi_events.PAPI_TOT_CYC
     # ])
+    # _, energy, _ = energyusage.evaluate(function, printToScreen=True, energyOutput=True)
     function()
     # TODO: For PR PAPI
     # papi_high.hl_read("computation")
@@ -32,9 +46,10 @@ def measure_time(function):
     # TODO: For released PAPI
     # [cycles] = papi_high.stop_counters()
     t2 = time.perf_counter(), time.process_time()
+    co2 = tracker.stop()
     counter_diff = t2[0] - t1[0]
     cpu_time = t2[1] - t1[1]
-    return 0, counter_diff, cpu_time
+    return co2, counter_diff, cpu_time
 
 
 def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
@@ -82,20 +97,20 @@ def run_tests(
         for tj, test in enumerate(tests):
             match test:
                 case "groupby":
-                    cycle, counter, cpu_time = measure_time(
+                    co2, counter, cpu_time = measure_time(
                         lambda: library.groupby(sdf, groupby_column)
                     )
                 case "sort":
-                    cycle, counter, cpu_time = measure_time(
+                    co2, counter, cpu_time = measure_time(
                         lambda: library.sort_column(sdf, sort_column)
                     )
                 case "drop_duplicates":
-                    cycle, counter, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
-            res[ti, 3 * tj + 0] = cycle
+                    co2, counter, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
+            res[ti, 3 * tj + 0] = co2
             res[ti, 3 * tj + 1] = counter
             res[ti, 3 * tj + 2] = cpu_time
     res_df = pd.DataFrame(res)
-    res_df.columns = [prefix + "_" + library.method_name + "_" + postfix for postfix in tests for prefix in ["cycles", "counter", "cpu"]]
+    res_df.columns = [prefix + "_" + library.method_name + "_" + postfix for postfix in tests for prefix in ["CO2", "cntr", "cpu"]]
     return res_df
 
 
