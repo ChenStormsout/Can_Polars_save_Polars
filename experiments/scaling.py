@@ -1,5 +1,6 @@
 from libraries import PDLibrary, DSLibrary, PolarsLibrary
 from data import get_diabetes
+from typing import Callable
 import gc
 import time
 import pandas as pd
@@ -8,13 +9,13 @@ import numpy as np
 rng = np.random.default_rng(42)
 
 
-def measure_time(function):
+def measure_time(function) -> float:
     """Measure CPU and wall times of a given function."""
     gc.collect()
-    t1 = time.perf_counter(), time.process_time()
+    t1 = time.process_time()
     function()
-    t2 = time.perf_counter(), time.process_time()
-    return t2[0] - t1[0], t2[1] - t1[1]
+    t2 = time.process_time()
+    return t2 - t1
 
 
 def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
@@ -28,6 +29,7 @@ def run_tests(
     dataset: pd.DataFrame,
     tests: list[str],
     library: DSLibrary,
+    metric_function: Callable[[Callable], float] = measure_time,
     groupby_column: str = None,
     sort_column: str = None,
     n_repeats: int = 10,
@@ -43,6 +45,9 @@ def run_tests(
         List of test names to be performed.
     library : DSLibrary instance
         Library to perform the tests with.
+    metric_function : Callable
+        Function wrapper which wraps the computation, measures some quantity of interest
+        and returns the metric value.
     groupby_column : string, optional
         Column name over which the groupby test is performed. If left empty, the test is
         skipped.
@@ -62,15 +67,15 @@ def run_tests(
         for tj, test in enumerate(tests):
             match test:
                 case "groupby":
-                    _, cpu_time = measure_time(
+                    cpu_time = metric_function(
                         lambda: library.groupby(sdf, groupby_column)
                     )
                 case "sort":
-                    _, cpu_time = measure_time(
+                    cpu_time = metric_function(
                         lambda: library.sort_column(sdf, sort_column)
                     )
                 case "drop_duplicates":
-                    _, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
+                    cpu_time = metric_function(lambda: library.drop_duplicates(sdf))
             res[ti, tj] = cpu_time
     res_df = pd.DataFrame(res)
     res_df.columns = [library.method_name + "_" + t for t in tests]
