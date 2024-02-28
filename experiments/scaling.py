@@ -4,11 +4,11 @@ import gc
 import time
 import os
 import pandas as pd
-# from pypapi import papi_high
-# from pypapi import events as papi_events
 import numpy as np
-# import energyusage
-from codecarbon import OfflineEmissionsTracker
+from pyJoules.device import DeviceFactory
+from pyJoules.device.rapl_device import RaplPackageDomain, RaplDramDomain
+from pyJoules.device.nvidia_device import NvidiaGPUDomain
+from pyJoules.energy_meter import EnergyMeter
 
 
 rng = np.random.default_rng(42)
@@ -17,39 +17,26 @@ rng = np.random.default_rng(42)
 def measure_time(function):
     """Measure CPU and wall times of a given function."""
     gc.collect()
-    tracker = OfflineEmissionsTracker(
-        tracking_mode = "process",
-        measure_power_secs = 0.1,
-        save_to_file = False,
-        save_to_api = False,
-        save_to_logger = False,
-        country_iso_code = "FIN",
-        log_level = "critical",
-    )
-    tracker.start()
+    domains = [
+        RaplPackageDomain(0),
+        # RaplDramDomain(0),
+        NvidiaGPUDomain(0),
+    ]
+    devices = DeviceFactory.create_devices(domains)
+    meter = EnergyMeter(devices)
+    meter.start()
     t1 = time.perf_counter(), time.process_time()
 
-    # TODO: This stuff was for the PR version of the library but it doesn't seem to work. 
-    # os.environ["PAPI_EVENTS"] = "PAPI_TOT_CYC"
-    # os.environ["PAPI_OUTPUT_DIRECTORY"] = "."
-    # papi_high.hl_region_begin("computation")
-    # TODO: For some reason perf counters are not available even though `papi_avail` shows that some, including `PAPI_TOT_CYC`, are.
-    # print(papi_high.num_counters())
-    # papi_high.start_counters([
-    #     papi_events.PAPI_TOT_CYC
-    # ])
-    # _, energy, _ = energyusage.evaluate(function, printToScreen=True, energyOutput=True)
     function()
-    # TODO: For PR PAPI
-    # papi_high.hl_read("computation")
-    # papi_high.hl_region_end("computation")
-    # TODO: For released PAPI
-    # [cycles] = papi_high.stop_counters()
+
     t2 = time.perf_counter(), time.process_time()
-    co2 = tracker.stop()
+    meter.stop()
+    sample = meter.get_trace()._samples[0]
+    cpu_energy = sample.energy["package_0"]
+    gpu_energy = sample.energy["nvidia_gpu_0"]
     counter_diff = t2[0] - t1[0]
     cpu_time = t2[1] - t1[1]
-    return co2, counter_diff, cpu_time
+    return cpu_energy, gpu_energy, counter_diff, cpu_time, sample.duration
 
 
 def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
@@ -97,24 +84,25 @@ def run_tests(
         for tj, test in enumerate(tests):
             match test:
                 case "groupby":
-                    co2, counter, cpu_time = measure_time(
+                    cpu_energy, gpu_energy, counter, cpu_time, duration = measure_time(
                         lambda: library.groupby(sdf, groupby_column)
                     )
                 case "sort":
-                    co2, counter, cpu_time = measure_time(
+                    cpu_energy, gpu_energy, counter, cpu_time, duration = measure_time(
                         lambda: library.sort_column(sdf, sort_column)
                     )
                 case "drop_duplicates":
-                    co2, counter, cpu_time = measure_time(lambda: library.drop_duplicates(sdf))
-            res[ti, 3 * tj + 0] = co2
+                    cpu_energy, gpu_energy, counter, cpu_time, duration = measure_time(lambda: library.drop_duplicates(sdf))
+            res[ti, 3 * tj + 0] = cpu_energy
             res[ti, 3 * tj + 1] = counter
-            res[ti, 3 * tj + 2] = cpu_time
+            res[ti, 3 * tj + 2] = duration
     res_df = pd.DataFrame(res)
-    res_df.columns = [prefix + "_" + library.method_name + "_" + postfix for postfix in tests for prefix in ["CO2", "cntr", "cpu"]]
+    res_df.columns = [prefix + "_" + library.method_name + "_" + postfix for postfix in tests for prefix in ["µJ", "cntr", "cpu"]]
     return res_df
 
 
 if __name__ == "__main__":
+    # pyRAPL.setup()
     df = get_diabetes()
     res_pd = run_tests(
         dataset=df,
