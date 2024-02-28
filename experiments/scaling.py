@@ -33,7 +33,7 @@ def run_tests(
     groupby_column: str = None,
     sort_column: str = None,
     n_repeats: int = 10,
-    sample_size: int = 100_000,
+    sample_sizes: list[int] = [100_000],
 ) -> pd.DataFrame:
     """Wrapper function to run whatever tests we want to perform.
 
@@ -59,26 +59,35 @@ def run_tests(
     sample_size : int, optional.
         Bootstrap sample size. Defaults to 100 000.
     """
-    res = np.zeros((n_repeats, len(tests)))
-    for ti in range(n_repeats):
-        print(f"Start test {ti+1}/{n_repeats}")
-        sdf = bootstrap_data(dataset, sample_size=sample_size)
-        sdf = library.convert_from_pandas(df=sdf)
-        for tj, test in enumerate(tests):
-            match test:
-                case "groupby":
-                    cpu_time = metric_function(
-                        lambda: library.groupby(sdf, groupby_column)
-                    )
-                case "sort":
-                    cpu_time = metric_function(
-                        lambda: library.sort_column(sdf, sort_column)
-                    )
-                case "drop_duplicates":
-                    cpu_time = metric_function(lambda: library.drop_duplicates(sdf))
-            res[ti, tj] = cpu_time
-    res_df = pd.DataFrame(res)
-    res_df.columns = [library.method_name + "_" + t for t in tests]
+    res = np.zeros(shape=(len(sample_sizes), n_repeats, len(tests)))
+    for si, sample_size in enumerate(sample_sizes):
+        print(
+            f"Start tests with sample size {sample_size} ({si+1}/{len(sample_sizes)})"
+        )
+        for ti in range(n_repeats):
+            print(f"Start test {ti+1}/{n_repeats}")
+            sdf = bootstrap_data(dataset, sample_size=sample_size)
+            sdf = library.convert_from_pandas(df=sdf)
+            for tj, test in enumerate(tests):
+                match test:
+                    case "groupby":
+                        cpu_time = metric_function(
+                            lambda: library.groupby(sdf, groupby_column)
+                        )
+                    case "sort":
+                        cpu_time = metric_function(
+                            lambda: library.sort_column(sdf, sort_column)
+                        )
+                    case "drop_duplicates":
+                        cpu_time = metric_function(lambda: library.drop_duplicates(sdf))
+                res[si, ti, tj] = cpu_time
+    res_dfs = []
+    for si, sample_size in enumerate(sample_sizes):
+        pdf = pd.DataFrame(res[si, :, :])
+        pdf["n"] = sample_size
+        res_dfs.append(pdf)
+    res_df = pd.concat(res_dfs)
+    res_df.columns = [library.method_name + "_" + t for t in tests] + ["n"]
     return res_df
 
 
