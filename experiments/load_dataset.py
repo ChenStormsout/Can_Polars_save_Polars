@@ -24,7 +24,7 @@ def load_parking_data_pandas() -> pd.DataFrame:
     return pd.read_parquet(file_path)
 
 
-def load_parking_data_cudf() -> cud_pandas.DataFrame:
+def load_parking_data_cudf() -> cudf_pandas.DataFrame:
     """Util function that loads the NYC parking data into
     a pandas DataFrame from 'nyc_parking_violations_2022.parquet'.
     If the file does not exist, download_data.sh is executed to download
