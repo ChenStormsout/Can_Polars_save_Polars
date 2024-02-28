@@ -71,16 +71,16 @@ def run_tests(
             for tj, test in enumerate(tests):
                 match test:
                     case "groupby":
-                        cpu_time = metric_function(
+                        metric = metric_function(
                             lambda: library.groupby(sdf, groupby_column)
                         )
                     case "sort":
-                        cpu_time = metric_function(
+                        metric = metric_function(
                             lambda: library.sort_column(sdf, sort_column)
                         )
                     case "drop_duplicates":
-                        cpu_time = metric_function(lambda: library.drop_duplicates(sdf))
-                res[si, ti, tj] = cpu_time
+                        metric = metric_function(lambda: library.drop_duplicates(sdf))
+                res[si, ti, tj] = metric
     res_dfs = []
     for si, sample_size in enumerate(sample_sizes):
         pdf = pd.DataFrame(res[si, :, :])
