@@ -100,7 +100,7 @@ def run_tests(
 
 if __name__ == "__main__":
     df = get_diabetes()
-    tests = ["drop_duplicates", "groupby", "sort", "merge"]
+    tests = ["drop_duplicates", "groupby", "sort"]  # , "merge"]
     sample_sizes = [10_000]
     res_pd = run_tests(
         dataset=df,
