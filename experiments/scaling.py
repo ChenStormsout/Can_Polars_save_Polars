@@ -32,6 +32,7 @@ def run_tests(
     metric_function: Callable[[Callable], float] = measure_time,
     groupby_column: str = None,
     sort_column: str = None,
+    merge_column: str = None,
     n_repeats: int = 10,
     sample_sizes: list[int] = [100_000],
 ) -> pd.DataFrame:
@@ -80,6 +81,12 @@ def run_tests(
                         )
                     case "drop_duplicates":
                         metric = metric_function(lambda: library.drop_duplicates(sdf))
+                    case "merge":
+                        metric = metric_function(
+                            lambda: library.merge(
+                                sdf, df_b=sdf, merge_column=merge_column
+                            )
+                        )
                 res[si, ti, tj] = metric
     res_dfs = []
     for si, sample_size in enumerate(sample_sizes):
@@ -93,19 +100,25 @@ def run_tests(
 
 if __name__ == "__main__":
     df = get_diabetes()
+    tests = ["drop_duplicates", "groupby", "sort", "merge"]
+    sample_sizes = [10_000]
     res_pd = run_tests(
         dataset=df,
-        tests=["drop_duplicates", "groupby", "sort"],
+        tests=tests,
         library=PDLibrary(),
         groupby_column="Pregnancies",
         sort_column="Glucose",
+        merge_column="Pregnancies",
+        sample_sizes=sample_sizes,
     )
     print(res_pd)
     res_pl = run_tests(
         dataset=df,
-        tests=["drop_duplicates", "groupby", "sort"],
+        tests=tests,
         library=PolarsLibrary(),
         groupby_column="Pregnancies",
         sort_column="Glucose",
+        merge_column="Pregnancies",
+        sample_sizes=sample_sizes,
     )
     print(res_pl)
