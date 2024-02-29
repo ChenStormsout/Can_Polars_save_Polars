@@ -6,15 +6,11 @@ authors = ["Korbinian Pfab <korbinian.pfab@siemens.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "3.10.12"
 polars = "^0.20.10"
 fastparquet = "^2024.2.0"
-
-
-[[tool.poetry.source]]
-name = "nvidia"
-url = "https://pypi.nvidia.com/"
-priority = "supplemental"
+openml = "^0.14.2"
+carbontracker = "^1.2.5"
 
 [build-system]
 requires = ["poetry-core"]
