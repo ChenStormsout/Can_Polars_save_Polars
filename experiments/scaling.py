@@ -1,22 +1,45 @@
 from libraries import PDLibrary, DSLibrary, PolarsLibrary
 from data import get_diabetes
 from typing import Callable, Any
+from dataclasses import dataclass
 import gc
 import time
 import pandas as pd
 import polars as pl
 import numpy as np
+from pyJoules.device import DeviceFactory
+from pyJoules.device.rapl_device import RaplPackageDomain, RaplDramDomain
+from pyJoules.device.nvidia_device import NvidiaGPUDomain
+from pyJoules.energy_meter import EnergyMeter
 
 rng = np.random.default_rng(42)
 
+@dataclass
+class Measure:
+    duration_seconds: float
+    cpu_µJ: float
+    gpu_µJ: float
 
 def measure_time(function) -> float:
     """Measure CPU and wall times of a given function."""
     gc.collect()
-    t1 = time.process_time()
+    domains = [
+        RaplPackageDomain(0),
+        # RaplDramDomain(0),
+        NvidiaGPUDomain(0),
+    ]
+    devices = DeviceFactory.create_devices(domains)
+    meter = EnergyMeter(devices)
+    meter.start()
+
     function()
-    t2 = time.process_time()
-    return t2 - t1
+
+    meter.stop()
+    sample = meter.get_trace()._samples[0]
+    cpu_energy = sample.energy["package_0"]
+    gpu_energy = sample.energy["nvidia_gpu_0"]
+    duration = sample.duration
+    return Measure(duration, cpu_energy, gpu_energy)
 
 
 def bootstrap_data(df: Any, sample_size: int = 10_000) -> pd.DataFrame:
@@ -33,7 +56,7 @@ def run_tests(
     dataset: pd.DataFrame,
     tests: list[str],
     library: DSLibrary,
-    metric_function: Callable[[Callable], float] = measure_time,
+    metric_function: Callable[[Callable], Measure] = measure_time,
     groupby_column: str = None,
     sort_column: str = None,
     merge_column: str = None,
@@ -64,7 +87,7 @@ def run_tests(
     sample_size : int, optional.
         Bootstrap sample size. Defaults to 100 000.
     """
-    res = np.zeros(shape=(len(sample_sizes), n_repeats, len(tests)))
+    res = np.zeros(shape=(len(sample_sizes), n_repeats, len(tests) * 3))
     for si, sample_size in enumerate(sample_sizes):
         print(
             f"Start tests with sample size {sample_size} ({si+1}/{len(sample_sizes)})"
@@ -91,21 +114,23 @@ def run_tests(
                                 sdf, df_b=sdf, merge_column=merge_column
                             )
                         )
-                res[si, ti, tj] = metric
+                res[si, ti, 3 * tj + 0] = metric.duration_seconds
+                res[si, ti, 3 * tj + 1] = metric.cpu_µJ
+                res[si, ti, 3 * tj + 2] = metric.gpu_µJ
     res_dfs = []
     for si, sample_size in enumerate(sample_sizes):
         pdf = pd.DataFrame(res[si, :, :])
         pdf["n"] = sample_size
         res_dfs.append(pdf)
     res_df = pd.concat(res_dfs)
-    res_df.columns = [library.method_name + "_" + t for t in tests] + ["n"]
+    res_df.columns = [prefix + "_" + library.method_name + "_" + t for t in tests for prefix in ["secs", "cpu_µJ", "gpu_µJ"]] + ["n"]
     return res_df
 
 
 if __name__ == "__main__":
     df = get_diabetes()
     tests = ["drop_duplicates", "groupby", "sort"]  # , "merge"]
-    sample_sizes = [10_000]
+    sample_sizes = [100_000]
     res_pd = run_tests(
         dataset=df,
         tests=tests,
