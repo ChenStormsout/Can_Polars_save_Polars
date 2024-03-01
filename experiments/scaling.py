@@ -1,9 +1,10 @@
 from libraries import PDLibrary, DSLibrary, PolarsLibrary
 from data import get_diabetes
-from typing import Callable
+from typing import Callable, Any
 import gc
 import time
 import pandas as pd
+import polars as pl
 import numpy as np
 
 rng = np.random.default_rng(42)
@@ -18,11 +19,14 @@ def measure_time(function) -> float:
     return t2 - t1
 
 
-def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
+def bootstrap_data(df: Any, sample_size: int = 10_000) -> pd.DataFrame:
     """Bootstrap data in a pandas dataframe."""
-    N = len(df.index)
+    N = df.shape[0]
     idx = rng.integers(low=0, high=N, size=sample_size)
-    return df.iloc[idx]
+    if isinstance(df, pl.DataFrame):
+        return df[idx]
+    else:
+        return df.iloc[idx]
 
 
 def run_tests(
@@ -67,8 +71,8 @@ def run_tests(
         )
         for ti in range(n_repeats):
             print(f"Start test {ti+1}/{n_repeats}")
-            sdf = bootstrap_data(dataset, sample_size=sample_size)
-            sdf = library.convert_from_pandas(df=sdf)
+            sdf = library.convert_from_pandas(df=df)
+            sdf = bootstrap_data(sdf, sample_size=sample_size)
             for tj, test in enumerate(tests):
                 match test:
                     case "groupby":
