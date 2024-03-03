@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import polars as pl
 import cudf
-
+from load_dataset import load_parking_data_pandas, load_parking_data_polars, load_parking_data_cudf
 
 class DSLibrary(ABC):
     """Abstract base class to act as a blueprint for libraries to experiment.
@@ -12,6 +12,11 @@ class DSLibrary(ABC):
 
     def __init__(self, method_name: str) -> None:
         self.method_name = method_name
+
+    @abstractmethod
+    def load(self) -> Any:
+        """Load nyc."""
+        pass
 
     @abstractmethod
     def load_csv(self, filename: Union[str, Path], **kwargs) -> Any:
@@ -50,6 +55,9 @@ class PDLibrary(DSLibrary):
     def __init__(self) -> None:
         super().__init__("pandas")
 
+    def load(self) -> Any:
+        return load_parking_data_pandas()
+
     def load_csv(self, filename: str | Path, **kwargs) -> Any:
         return pd.read_csv(filename, **kwargs)
 
@@ -79,6 +87,9 @@ class PolarsLibrary(DSLibrary):
     def __init__(self) -> None:
         super().__init__("polars")
 
+    def load(self) -> Any:
+        return load_parking_data_polars()
+
     def load_csv(self, filename: str | Path, **kwargs) -> Any:
         return pl.read_csv(filename, **kwargs)
 
@@ -101,10 +112,13 @@ class PolarsLibrary(DSLibrary):
 
 
 class CuDFLibrary(DSLibrary):
-    """Pandas library test object."""
+    """CuDF library test object."""
 
     def __init__(self) -> None:
-        super().__init__("pandas")
+        super().__init__("cudf")
+
+    def load(self) -> Any:
+        return load_parking_data_cudf()
 
     def load_csv(self, filename: str | Path, **kwargs) -> Any:
         return cudf.read_csv(filename, **kwargs)
@@ -117,7 +131,7 @@ class CuDFLibrary(DSLibrary):
 
     def groupby(
         self, df: cudf.DataFrame, column_name: str
-    ) -> cudf.api.typing.DataFrameGroupBy:
+    ):# -> cudf.api.typing.DataFrameGroupBy:
         return df.groupby(by=column_name)
 
     def sort_column(self, df: cudf.DataFrame, column_name: str) -> cudf.DataFrame:

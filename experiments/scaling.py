@@ -1,5 +1,6 @@
-from libraries import PDLibrary, DSLibrary, PolarsLibrary
+from libraries import PDLibrary, DSLibrary, PolarsLibrary, CuDFLibrary
 from data import get_diabetes
+from load_dataset import load_parking_data_pandas
 from typing import Callable, Any
 from dataclasses import dataclass
 import gc
@@ -42,14 +43,11 @@ def measure_time(function) -> float:
     return Measure(duration, cpu_energy, gpu_energy)
 
 
-def bootstrap_data(df: Any, sample_size: int = 10_000) -> pd.DataFrame:
+def bootstrap_data(df: pd.DataFrame, sample_size: int = 10_000) -> pd.DataFrame:
     """Bootstrap data in a pandas dataframe."""
     N = df.shape[0]
     idx = rng.integers(low=0, high=N, size=sample_size)
-    if isinstance(df, pl.DataFrame):
-        return df[idx]
-    else:
-        return df.iloc[idx]
+    return df.iloc[idx]
 
 
 def run_tests(
@@ -94,10 +92,18 @@ def run_tests(
         )
         for ti in range(n_repeats):
             print(f"Start test {ti+1}/{n_repeats}")
-            sdf = library.convert_from_pandas(df=df)
-            sdf = bootstrap_data(sdf, sample_size=sample_size)
+            bdf = bootstrap_data(df, sample_size=sample_size)
+            small = bootstrap_data(df, sample_size=100)
+            sdf = library.convert_from_pandas(df=bdf)
             for tj, test in enumerate(tests):
                 match test:
+                    case "load":
+                        if si == 0:
+                            metric = metric_function(
+                                lambda: library.load()
+                            )
+                        else:
+                            metric = Measure(0,0,0)
                     case "groupby":
                         metric = metric_function(
                             lambda: library.groupby(sdf, groupby_column)
@@ -111,7 +117,7 @@ def run_tests(
                     case "merge":
                         metric = metric_function(
                             lambda: library.merge(
-                                sdf, df_b=sdf, merge_column=merge_column
+                                sdf, df_b=small, merge_column=merge_column
                             )
                         )
                 res[si, ti, 3 * tj + 0] = metric.duration_seconds
@@ -128,26 +134,41 @@ def run_tests(
 
 
 if __name__ == "__main__":
-    df = get_diabetes()
-    tests = ["drop_duplicates", "groupby", "sort"]  # , "merge"]
-    sample_sizes = [100_000]
+    df = load_parking_data_pandas()
+    print(f"Loaded {len(df)} rows")
+
+    tests = ["load", "drop_duplicates", "groupby", "sort"]# "merge"
+    sample_sizes = [100_000, 100_000_0, 100_000_00]
     res_pd = run_tests(
         dataset=df,
         tests=tests,
         library=PDLibrary(),
-        groupby_column="Pregnancies",
-        sort_column="Glucose",
-        merge_column="Pregnancies",
+        groupby_column="Street Code1",
+        sort_column="Issue Date",
+        merge_column="Street Code1",
         sample_sizes=sample_sizes,
     )
     print(res_pd)
+    res_pd.to_csv("pandas.csv")
     res_pl = run_tests(
         dataset=df,
         tests=tests,
         library=PolarsLibrary(),
-        groupby_column="Pregnancies",
-        sort_column="Glucose",
-        merge_column="Pregnancies",
+        groupby_column="Street Code1",
+        sort_column="Issue Date",
+        merge_column="Street Code1",
         sample_sizes=sample_sizes,
     )
     print(res_pl)
+    res_pl.to_csv("polars.csv")
+    res_cd = run_tests(
+        dataset=df,
+        tests=tests,
+        library=CuDFLibrary(),
+        groupby_column="Street Code1",
+        sort_column="Issue Date",
+        merge_column="Street Code1",
+        sample_sizes=sample_sizes,
+    )
+    print(res_cd)
+    res_cd.to_csv("cudf.csv")
