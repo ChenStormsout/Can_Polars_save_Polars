@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
-import cudf.pandas as cudf_pandas
+import cudf
 import polars as pl
 
 
@@ -24,7 +24,7 @@ def load_parking_data_pandas() -> pd.DataFrame:
     return pd.read_parquet(file_path)
 
 
-def load_parking_data_cudf() -> cudf_pandas.DataFrame:
+def load_parking_data_cudf() -> cudf.DataFrame:
     """Util function that loads the NYC parking data into
     a pandas DataFrame from 'nyc_parking_violations_2022.parquet'.
     If the file does not exist, download_data.sh is executed to download
@@ -39,7 +39,7 @@ def load_parking_data_cudf() -> cudf_pandas.DataFrame:
     file_path = Path(__file__).parent.parent / "nyc_parking_violations_2022.parquet"
     if not file_path.exists():
         os.system("sh ./download_data.sh")
-    return cudf_pandas.read_parquet(file_path)
+    return cudf.read_parquet(file_path)
 
 
 def load_parking_data_polars() -> pl.DataFrame:

@@ -1,4 +1,7 @@
-numpy==1.21.5
+numpy>1.21.5
 openml==0.14.2
 pandas==2.2.0
 polars==0.20.9
+pyJoules==0.5.1
+--extra-index-url https://pypi.anaconda.org/rapidsai-wheels-nightly/simple
+cudf-cu12>=24.4.0a0,<=24.4
