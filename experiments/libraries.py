@@ -3,7 +3,8 @@ from typing import Union, Any
 from pathlib import Path
 import pandas as pd
 import polars as pl
-import cudf
+
+# import cudf
 
 
 class DSLibrary(ABC):
@@ -100,30 +101,30 @@ class PolarsLibrary(DSLibrary):
         return df_a.join(df_b, on=merge_column)
 
 
-class CuDFLibrary(DSLibrary):
-    """Pandas library test object."""
-
-    def __init__(self) -> None:
-        super().__init__("pandas")
-
-    def load_csv(self, filename: str | Path, **kwargs) -> Any:
-        return cudf.read_csv(filename, **kwargs)
-
-    def convert_from_pandas(self, df: cudf.DataFrame) -> cudf.DataFrame:
-        return df
-
-    def drop_duplicates(self, df: cudf.DataFrame) -> cudf.DataFrame:
-        return df.drop_duplicates()
-
-    def groupby(
-        self, df: cudf.DataFrame, column_name: str
-    ) -> cudf.api.typing.DataFrameGroupBy:
-        return df.groupby(by=column_name)
-
-    def sort_column(self, df: cudf.DataFrame, column_name: str) -> cudf.DataFrame:
-        return df.sort_values(by=column_name)
-
-    def merge(
-        self, df_a: cudf.DataFrame, df_b: cudf.DataFrame, merge_column: str
-    ) -> cudf.DataFrame:
-        return df_a.merge(df_b, on=merge_column)
+# class CuDFLibrary(DSLibrary):
+#     """Pandas library test object."""
+#
+#     def __init__(self) -> None:
+#         super().__init__("pandas")
+#
+#     def load_csv(self, filename: str | Path, **kwargs) -> Any:
+#         return cudf.read_csv(filename, **kwargs)
+#
+#     def convert_from_pandas(self, df: cudf.DataFrame) -> cudf.DataFrame:
+#         return df
+#
+#     def drop_duplicates(self, df: cudf.DataFrame) -> cudf.DataFrame:
+#         return df.drop_duplicates()
+#
+#     def groupby(
+#         self, df: cudf.DataFrame, column_name: str
+#     ) -> cudf.api.typing.DataFrameGroupBy:
+#         return df.groupby(by=column_name)
+#
+#     def sort_column(self, df: cudf.DataFrame, column_name: str) -> cudf.DataFrame:
+#         return df.sort_values(by=column_name)
+#
+#     def merge(
+#         self, df_a: cudf.DataFrame, df_b: cudf.DataFrame, merge_column: str
+#     ) -> cudf.DataFrame:
+#         return df_a.merge(df_b, on=merge_column)
