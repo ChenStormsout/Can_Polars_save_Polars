@@ -98,7 +98,7 @@ class PolarsLibrary(DSLibrary):
     def load_csv(self, filename: str | Path, **kwargs) -> Any:
         return pl.read_csv(filename, **kwargs)
 
-    def convert_from_pandas(self, df: pd.DataFrame) -> pd.DataFrame:
+    def convert_from_pandas(self, df: pd.DataFrame) -> pl.DataFrame:
         return pl.from_pandas(df)
 
     def drop_duplicates(self, df: pl.DataFrame) -> pl.DataFrame:
@@ -128,8 +128,8 @@ class CuDFLibrary(DSLibrary):
     def load_csv(self, filename: str | Path, **kwargs) -> Any:
         return cudf.read_csv(filename, **kwargs)
 
-    def convert_from_pandas(self, df: cudf.DataFrame) -> cudf.DataFrame:
-        return df
+    def convert_from_pandas(self, df: pd.DataFrame) -> cudf.DataFrame:
+        return cudf.from_pandas(df)
 
     def drop_duplicates(self, df: cudf.DataFrame) -> cudf.DataFrame:
         return df.drop_duplicates()
