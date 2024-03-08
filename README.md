@@ -2,8 +2,9 @@
 Project repo for the course Sustainability in Computer and Data science 2024
 
 # RAPL
-
 Because side channels it is behind sudo. I just do `sudo chmod +r /sys/class/powercap/intel-rapl/intel-rapl:0/energy_u` to be able to access it.
+
+If you see negative energy results just add `max_energy_range_uj` value to it. In the benchmark results included this is `65532610987`.
 
 # How to download the dataset  
 Run <code>./download_data.sh</code> from the repository root. A download should start and a <code>nyc_parking_violations_2022.parquet</code> file should appear in your directory.  
